@@ -1,8 +1,8 @@
-package com.example.demo.SentimentAnalysis.controller;
+package com.example.demo.sentiment_analysis.controller;
 
-import com.example.demo.SentimentAnalysis.model.Reaction;
-import com.example.demo.SentimentAnalysis.service.ReactionService;
-import org.bson.types.ObjectId;
+import com.example.demo.sentiment_analysis.dto.ReactionDto;
+import com.example.demo.sentiment_analysis.model.Reaction;
+import com.example.demo.sentiment_analysis.service.ReactionService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,9 +21,8 @@ public class ReactionController {
         return reactionService.allReaction();
     }
 
-    @PostMapping("/postOfReaction/{id}")
-    public void reactEmoji(@PathVariable ObjectId id,
-                           @RequestBody Reaction reaction) {
-        reactionService.createReaction(id, reaction);
+    @PostMapping("/postOfReaction")
+    public void reactEmoji(@RequestBody ReactionDto reactionDto) {
+        reactionService.createReaction(reactionDto);
     }
 }

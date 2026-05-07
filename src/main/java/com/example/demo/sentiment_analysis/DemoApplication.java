@@ -1,4 +1,4 @@
-package com.example.demo.SentimentAnalysis;
+package com.example.demo.sentiment_analysis;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
