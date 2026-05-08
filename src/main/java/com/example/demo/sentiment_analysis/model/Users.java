@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Document(collection = "user_db")
 @Data
@@ -24,4 +25,5 @@ public class Users {
     private String password;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime dateTime;
+    private List<String> roles;
 }

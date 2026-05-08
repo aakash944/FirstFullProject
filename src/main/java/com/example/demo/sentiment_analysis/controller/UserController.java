@@ -4,13 +4,14 @@ package com.example.demo.sentiment_analysis.controller;
 import com.example.demo.sentiment_analysis.dto.UserDto;
 import com.example.demo.sentiment_analysis.model.Users;
 import com.example.demo.sentiment_analysis.service.UserService;
-import jakarta.validation.Valid;
+//import jakarta.validation.Valid;
 import org.bson.types.ObjectId;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -28,12 +29,6 @@ public class UserController {
         return ResponseEntity.ok(userDb);
     }
 
-    @PostMapping("/createNewUser")
-    public ResponseEntity<Users> createUser(@Valid
-                                                @RequestBody UserDto userDto) {
-        Users users = userService.newUserCreate(userDto);
-        return new ResponseEntity<>(users, HttpStatus.CREATED);
-    }
 
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable ObjectId id) {
@@ -43,7 +38,6 @@ public class UserController {
 
     @PutMapping("/users/{id}")
     public ResponseEntity<Users> updateUser(@PathVariable ObjectId id,
-                                            @Valid
                                             @RequestBody UserDto userInfo) {
 
         Users updatedUser = userService.newUserUpdate(id, userInfo);

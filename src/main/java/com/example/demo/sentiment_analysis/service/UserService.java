@@ -10,6 +10,7 @@ import com.example.demo.sentiment_analysis.repository.PostsRepo;
 import com.example.demo.sentiment_analysis.repository.ReactionRepo;
 import com.example.demo.sentiment_analysis.repository.UserRepo;
 import org.bson.types.ObjectId;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -25,6 +26,7 @@ public class UserService {
     private final PostsRepo postsRepo;
     private final CommentRepo commentRepo;
     private final ReactionRepo reactionRepo;
+    private static final BCryptPasswordEncoder encoder=new BCryptPasswordEncoder();
 
     public UserService(UserRepo userRepo, PostsRepo postsRepo, CommentRepo commentRepo, ReactionRepo reactionRepo) {
         this.userRepo = userRepo;
@@ -38,9 +40,10 @@ public class UserService {
     }
 
     public Users newUserCreate(UserDto userInfo) {
-        validatePassword(userInfo.getPassword());
+//        validatePassword(userInfo.getPassword());
         Users users = new Users();
-        users.setPassword(userInfo.getPassword());
+        users.setRoles(List.of("USER"));
+        users.setPassword(encoder.encode(userInfo.getPassword()));
         users.setUserEmail(userInfo.getUserEmail());
         users.setDateTime(LocalDateTime.now());
         return userRepo.save(users);
