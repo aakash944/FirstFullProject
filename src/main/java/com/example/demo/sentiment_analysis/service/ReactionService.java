@@ -1,16 +1,20 @@
 package com.example.demo.sentiment_analysis.service;
 
 import com.example.demo.sentiment_analysis.dto.ReactionDto;
+import com.example.demo.sentiment_analysis.exception.UserNotFoundException;
 import com.example.demo.sentiment_analysis.model.Reaction;
+import com.example.demo.sentiment_analysis.model.Users;
 import com.example.demo.sentiment_analysis.repository.PostsRepo;
 import com.example.demo.sentiment_analysis.repository.ReactionRepo;
 import com.example.demo.sentiment_analysis.repository.UserRepo;
 
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -26,26 +30,29 @@ public class ReactionService {
         this.postsRepo = postsRepo;
     }
 
-    public List<Reaction> allReaction() {
-        return reactionRepo.findAll();
+    public Optional<Reaction> allReaction(String userEmail) {
+
+        Users currentUser = userRepo.findByUserEmail(userEmail);
+
+        if (currentUser == null) {
+            throw new UsernameNotFoundException("User not found");
+        }
+        return reactionRepo.findByUserId(currentUser.getId());
     }
 
-    public void createReaction(ReactionDto dto) {
-
-
-        userRepo.findById(dto.getUserId())
+    public void createReaction(ReactionDto dto, String userEmail) {
+        Users byUserEmail = userRepo.findByUserEmail(userEmail);
+        userRepo.findById(byUserEmail.getId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
 
         postsRepo.findById(dto.getPostId())
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
 
         Optional<Reaction> existing = reactionRepo
-                .findByUserIdAndPostId(dto.getUserId(), dto.getPostId());
+                .findByUserIdAndPostId(byUserEmail.getId(), dto.getPostId());
 
-        if (existing.isEmpty()) {
-
+        if (existing.isEmpty() && dto.getUserId().equals(byUserEmail.getId())) {
             Reaction reaction = new Reaction();
             reaction.setUserId(dto.getUserId());
             reaction.setPostId(dto.getPostId());

@@ -15,6 +15,7 @@ import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
 
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -34,38 +35,53 @@ public class LogicOfPosts {
         this.reactionRepo = reactionRepo;
     }
 
-    public List<Posts> getSentimentResult() {
-        return postsRepo.findAll();
+    public List<Posts> getPostsByUserEmail(String userEmail) {
+        Users user = userRepo.findByUserEmail(userEmail);
+        return postsRepo.findByUserId(user.getId());
     }
 
-    public Posts newPostCreate(PostDto postDto) {
-        Optional<Users> byId = userRepo.findById(postDto.getUserId());
-        if (byId.isPresent()) {
-            Users users = byId.get();
-            Posts posts = new Posts();
-            posts.setUserId(users.getId());
-            posts.setContent(postDto.getContent());
-            posts.setTitle(postDto.getTitle());
-            posts.setCreateAt(LocalDateTime.now());
-            return postsRepo.save(posts);
-        } else {
-            throw new UserNotFoundException("Users is not found " + byId);
+    public Posts createPostForUser(PostDto postDto, String currentUserEmail) {
+        Users currentUser = userRepo.findByUserEmail(currentUserEmail);
+        Posts posts = new Posts();
+        posts.setUserId(currentUser.getId());
+        posts.setContent(postDto.getContent());
+        posts.setTitle(postDto.getTitle());
+        posts.setCreateAt(LocalDateTime.now());
+
+        return postsRepo.save(posts);
+    }
+
+    public void removePost(ObjectId id, String userEmail) throws AccessDeniedException {
+
+        Users currentUser = userRepo.findByUserEmail(userEmail);
+        Posts post = postsRepo.findById(id)
+                .orElseThrow(() ->
+                        new PostsNotFoundException("Post not found"));
+
+        // OWNERSHIP CHECK
+        if (!post.getUserId().equals(currentUser.getId())) {
+            throw new AccessDeniedException(
+                    "You can delete only your own post"
+            );
         }
+
+        // delete related comments
+        commentRepo.deleteByPostId(post.getId());
+
+        // delete related reactions
+        reactionRepo.deleteByPostId(post.getId());
+
+        // delete post
+        postsRepo.delete(post);
     }
 
-    public void removePost(ObjectId id) {
-        postsRepo.deleteById(id);
-        commentRepo.deleteByPostId(id);
-        reactionRepo.deleteByUserId(id);
-    }
-
-    public Posts newPostUpdate(ObjectId id, PostDto postDto) {
-
-         userRepo.findById(postDto.getUserId())
-                .orElseThrow(() -> new UserNotFoundException("User is not found"));
-
+    public Posts updatePost(ObjectId id, PostDto postDto, String userEmail) {
+        Users currentUser = userRepo.findByUserEmail(userEmail);
         Posts posts = postsRepo.findById(id)
                 .orElseThrow(() -> new PostsNotFoundException("Post is not found"));
+        if (!posts.getUserId().equals(currentUser.getId())) {
+            throw new UserNotFoundException("User not found exception");
+        }
 
         if (postDto.getContent() != null && !postDto.getContent().isEmpty()) {
             posts.setContent(postDto.getContent());

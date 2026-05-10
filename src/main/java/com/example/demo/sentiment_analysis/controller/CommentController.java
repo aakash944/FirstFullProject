@@ -6,12 +6,16 @@ import com.example.demo.sentiment_analysis.service.CommentService;
 import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/comment")
+@RequestMapping("/api/comment")
 public class CommentController {
     private final CommentService commentService;
 
@@ -19,31 +23,43 @@ public class CommentController {
         this.commentService = commentService;
     }
 
-    @GetMapping("/getOfComment")
-    public ResponseEntity<List<Comment>> getAllComment() {
-        List<Comment> comments = commentService.commentCollect();
+    @GetMapping
+    public ResponseEntity<List<Comment>> getAllCommentOfUser() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        User principal = (User) authentication.getPrincipal();
+        List<Comment> comments = commentService.getCommentByEmail(principal.getUsername());
         return new ResponseEntity<>(comments, HttpStatus.OK);
 
     }
 
-    @PostMapping("/postOfComment")
-    public ResponseEntity<Comment> createComment(@RequestBody CommentDto comment) {
-        Comment commentCreate = commentService.newComment(comment);
-        return new ResponseEntity<>(commentCreate,HttpStatus.CREATED);
+    @PostMapping
+    public ResponseEntity<Comment> createComment(@RequestBody CommentDto commentDto) throws AccessDeniedException {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        User principal = (User) authentication.getPrincipal();
+        Comment commentCreated = commentService.newComment(commentDto, principal.getUsername());
+        return new ResponseEntity<>(commentCreated, HttpStatus.CREATED);
     }
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<Void> deleteById(@PathVariable ObjectId id) {
-        commentService.removeComment(id);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteById(@PathVariable ObjectId id) throws AccessDeniedException {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        User principal = (User) authentication.getPrincipal();
+        commentService.removeComment(id, principal.getUsername());
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    @PutMapping("/update/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Comment> updateComment(@PathVariable ObjectId id,
-                              @RequestBody CommentDto commentDto) {
+                                                 @RequestBody CommentDto commentDto) {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+        User principal = (User) authentication.getPrincipal();
         Comment comment = commentService
-                .updateCreateComment(id, commentDto);
-        return new ResponseEntity<>(comment,HttpStatus.OK);
+                .updateCreateComment(id, commentDto,principal.getUsername());
+        return new ResponseEntity<>(comment, HttpStatus.OK);
     }
 
 }

@@ -11,4 +11,8 @@ public interface ReactionRepo extends MongoRepository<Reaction,ObjectId> {
     Optional<Reaction> findByUserIdAndPostId(ObjectId userId, ObjectId postId);
 
     void deleteByUserId(ObjectId id);
+
+    Optional<Reaction> findByUserId(ObjectId id);
+
+    void deleteByPostId(ObjectId id);
 }
