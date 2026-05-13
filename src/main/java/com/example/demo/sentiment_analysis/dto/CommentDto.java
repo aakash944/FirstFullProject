@@ -10,7 +10,6 @@ import org.bson.types.ObjectId;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CommentDto {
-    private ObjectId userId;
     private ObjectId postId;
     private String text;
 }

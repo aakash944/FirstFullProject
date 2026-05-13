@@ -1,6 +1,7 @@
 package com.example.demo.sentiment_analysis.service;
 
 import com.example.demo.sentiment_analysis.dto.PostDto;
+import com.example.demo.sentiment_analysis.enumeration.TypeOfAccess;
 import com.example.demo.sentiment_analysis.exception.PostsNotFoundException;
 import com.example.demo.sentiment_analysis.exception.UserNotFoundException;
 import com.example.demo.sentiment_analysis.model.Posts;
@@ -36,13 +37,23 @@ public class LogicOfPosts {
     }
 
     public List<Posts> getPostsByUserEmail(String userEmail) {
-        Users user = userRepo.findByUserEmail(userEmail);
-        return postsRepo.findByUserId(user.getId());
+        Users currentUser = userRepo.findByUserEmail(userEmail);
+
+        List<Posts> allPosts = postsRepo.findAll();
+        return allPosts.stream()
+                .filter(post ->
+
+                        post.getType() == TypeOfAccess.PUBLIC
+                                || post.getUserId().equals(currentUser.getId())
+
+                )
+                .toList();
     }
 
     public Posts createPostForUser(PostDto postDto, String currentUserEmail) {
         Users currentUser = userRepo.findByUserEmail(currentUserEmail);
         Posts posts = new Posts();
+        posts.setType(postDto.getTypeOfAccess());
         posts.setUserId(currentUser.getId());
         posts.setContent(postDto.getContent());
         posts.setTitle(postDto.getTitle());

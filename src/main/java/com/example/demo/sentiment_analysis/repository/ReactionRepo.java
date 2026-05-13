@@ -4,6 +4,7 @@ import com.example.demo.sentiment_analysis.model.Reaction;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ReactionRepo extends MongoRepository<Reaction,ObjectId> {
@@ -15,4 +16,7 @@ public interface ReactionRepo extends MongoRepository<Reaction,ObjectId> {
     Optional<Reaction> findByUserId(ObjectId id);
 
     void deleteByPostId(ObjectId id);
+
+    List<Reaction> findByPostIdIn(List<ObjectId> visiblePostIds);
+
 }

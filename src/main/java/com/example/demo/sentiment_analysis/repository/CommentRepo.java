@@ -9,5 +9,6 @@ import java.util.List;
 public interface CommentRepo extends MongoRepository<Comment, ObjectId> {
     void deleteByPostId(ObjectId postsId);
     void deleteByUserId(ObjectId userId);
-    List<Comment> findByUserId(ObjectId id);
+
+    List<Comment> findByPostIdIn(List<ObjectId> publicPostIds);
 }

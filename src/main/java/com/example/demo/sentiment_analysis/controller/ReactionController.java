@@ -7,8 +7,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
-import java.util.Optional;
+
+
 
 @RestController
 @RequestMapping("/api/react")
@@ -20,15 +22,16 @@ public class ReactionController {
     }
 
     @GetMapping
-    public Optional<Reaction> getAllReaction() {
+    public List<Reaction> getAllReaction() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         org.springframework.security.core.userdetails.User principal =
                 (org.springframework.security.core.userdetails.User) authentication.getPrincipal();
-        return reactionService.allReaction(principal.getUsername());
+        return reactionService.getAllReactions(principal.getUsername());
     }
 
+
     @PostMapping
-    public void reactEmoji(@RequestBody ReactionDto reactionDto) {
+    public void reactEmoji(@RequestBody ReactionDto reactionDto) throws AccessDeniedException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         org.springframework.security.core.userdetails.User principal =
                 (org.springframework.security.core.userdetails.User) authentication.getPrincipal();

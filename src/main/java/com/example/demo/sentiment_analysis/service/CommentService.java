@@ -1,6 +1,8 @@
 package com.example.demo.sentiment_analysis.service;
 
 import com.example.demo.sentiment_analysis.dto.CommentDto;
+import com.example.demo.sentiment_analysis.enumeration.TypeOfAccess;
+import com.example.demo.sentiment_analysis.exception.CommentNotFoundException;
 import com.example.demo.sentiment_analysis.exception.PostsNotFoundException;
 import com.example.demo.sentiment_analysis.model.Comment;
 import com.example.demo.sentiment_analysis.model.Posts;
@@ -9,12 +11,12 @@ import com.example.demo.sentiment_analysis.repository.CommentRepo;
 import com.example.demo.sentiment_analysis.repository.PostsRepo;
 import com.example.demo.sentiment_analysis.repository.UserRepo;
 import org.bson.types.ObjectId;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 
 @Service
@@ -31,25 +33,41 @@ public class CommentService {
     }
 
     public List<Comment> getCommentByEmail(String userEmail) {
-        Users byUserEmail = userRepo.findByUserEmail(userEmail);
-        return commentRepo.findByUserId(byUserEmail.getId());
+
+        Users user = userRepo.findByUserEmail(userEmail);
+
+        List<ObjectId> visiblePostIds = postsRepo.findAll().stream()
+                .filter(post ->
+                        post.getType() == TypeOfAccess.PUBLIC
+                                || post.getUserId().equals(user.getId())
+                )
+                .map(x -> x.getId())
+                .toList();
+
+        return commentRepo.findByPostIdIn(visiblePostIds);
     }
 
     public Comment newComment(CommentDto commentDto, String userEmail) throws AccessDeniedException {
-        Users currentUser = userRepo.findByUserEmail(userEmail);
-        Posts post = postsRepo.findById(commentDto.getPostId())
-                .orElseThrow(() ->
-                        new PostsNotFoundException("Post not found"));
 
-        // OWNER CHECK
-        if (!post.getUserId().equals(currentUser.getId())) {
-            throw new AccessDeniedException(
-                    "You can only comment on your own post"
-            );
+        Users currentUser = userRepo.findByUserEmail(userEmail);
+
+        if (currentUser == null) {
+            throw new UsernameNotFoundException("User not found");
+        }
+
+        Posts post = postsRepo.findById(commentDto.getPostId())
+                .orElseThrow(() -> new PostsNotFoundException("Post not found"));
+
+        // ACCESS CHECK (IMPORTANT PART)
+        boolean canAccess =
+                post.getType() == TypeOfAccess.PUBLIC ||
+                        post.getUserId().equals(currentUser.getId());
+
+        if (!canAccess) {
+            throw new AccessDeniedException("You cannot comment on this post");
         }
 
         Comment comment = new Comment();
-
         comment.setUserId(currentUser.getId());
         comment.setPostId(post.getId());
         comment.setText(commentDto.getText());
@@ -58,40 +76,67 @@ public class CommentService {
         return commentRepo.save(comment);
     }
 
-    public void removeComment(ObjectId id, String userName) throws AccessDeniedException {
-        Users byUserEmail = userRepo.findByUserEmail(userName);
-        Optional<Comment> byId = commentRepo.findById(id);
-        Comment comment = byId.get();
-        if (!byUserEmail.getId().equals(comment.getUserId())) {
-            throw new AccessDeniedException(
-                    "You can only remove on your own post"
-            );
+    public void removeComment(ObjectId id, String userEmail) throws AccessDeniedException {
+
+        Users user = userRepo.findByUserEmail(userEmail);
+
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found");
         }
-        commentRepo.deleteById(id);
+
+        Comment comment = commentRepo.findById(id)
+                .orElseThrow(() -> new CommentNotFoundException("Comment not found"));
+
+        Posts post = postsRepo.findById(comment.getPostId())
+                .orElseThrow(() -> new PostsNotFoundException("Post not found"));
+
+        boolean canDelete =
+                        post.getUserId().equals(user.getId()) ||
+                        comment.getUserId().equals(user.getId());
+
+        if (!canDelete) {
+            throw new AccessDeniedException("Not allowed to delete this comment");
+        }
+
+        commentRepo.delete(comment);
     }
 
-    public Comment updateCreateComment(ObjectId id, CommentDto commentDto, String userEmail) {
-        Users byUserEmail = userRepo.findByUserEmail(userEmail);
+    public Comment updateComment(ObjectId id, CommentDto commentDto, String userEmail) throws AccessDeniedException {
 
-        Optional<Comment> byId = commentRepo.findById(id);
+        Users user = userRepo.findByUserEmail(userEmail);
 
-        Comment comment = byId.get();
-
-        postsRepo.findById(commentDto.getPostId()).
-                orElseThrow(() -> new PostsNotFoundException("Post not found"));
-        if (!byUserEmail.getId().equals(comment.getUserId())) {
-            throw new PostsNotFoundException("Posts not found exception ");
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found");
         }
-        Comment commentExist = new Comment();
-        commentExist.setUserId(commentDto.getUserId());
-        commentExist.setPostId(commentDto.getPostId());
 
-        commentExist.setText(commentDto.getText() != null &&
-                !commentDto.getText().isEmpty() ?
-                commentDto.getText() : commentExist.getText());
+        Comment existingComment = commentRepo.findById(id)
+                .orElseThrow(() -> new CommentNotFoundException("Comment not found"));
 
-        commentExist.setCreatedAt(LocalDateTime.now());
-        return commentRepo.save(commentExist);
+        Posts post = postsRepo.findById(existingComment.getPostId())
+                .orElseThrow(() -> new PostsNotFoundException("Post not found"));
+
+        // ownership check
+        if (!existingComment.getUserId().equals(user.getId())) {
+            throw new AccessDeniedException("You can only update your own comment");
+        }
+
+        // optional: check post visibility
+        boolean canAccess =
+                post.getType() == TypeOfAccess.PUBLIC ||
+                        post.getUserId().equals(user.getId());
+
+        if (!canAccess) {
+            throw new AccessDeniedException("Post not accessible");
+        }
+
+        // UPDATE (NOT CREATE)
+        if (commentDto.getText() != null && !commentDto.getText().isBlank()) {
+            existingComment.setText(commentDto.getText());
+        }
+
+        existingComment.setCreatedAt(LocalDateTime.now());
+
+        return commentRepo.save(existingComment);
     }
 }
 

@@ -1,5 +1,6 @@
 package com.example.demo.sentiment_analysis.model;
 
+import com.example.demo.sentiment_analysis.enumeration.TypeOfAccess;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,7 +28,7 @@ public class Posts {
 
 
     private String content;
-
+    private TypeOfAccess type;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createAt;
 

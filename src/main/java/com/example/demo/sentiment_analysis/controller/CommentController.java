@@ -53,12 +53,12 @@ public class CommentController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Comment> updateComment(@PathVariable ObjectId id,
-                                                 @RequestBody CommentDto commentDto) {
+                                                 @RequestBody CommentDto commentDto) throws AccessDeniedException {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
         User principal = (User) authentication.getPrincipal();
         Comment comment = commentService
-                .updateCreateComment(id, commentDto,principal.getUsername());
+                .updateComment(id, commentDto,principal.getUsername());
         return new ResponseEntity<>(comment, HttpStatus.OK);
     }
 

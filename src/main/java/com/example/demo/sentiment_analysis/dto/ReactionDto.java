@@ -10,11 +10,6 @@ import org.bson.types.ObjectId;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReactionDto {
-
-    private ObjectId userId;   // who reacted
-
-
     private ObjectId postId;   // which post
-
     private ReactionType reactionType;
 }

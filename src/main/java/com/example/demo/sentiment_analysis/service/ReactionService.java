@@ -1,21 +1,22 @@
 package com.example.demo.sentiment_analysis.service;
 
 import com.example.demo.sentiment_analysis.dto.ReactionDto;
-import com.example.demo.sentiment_analysis.exception.UserNotFoundException;
+import com.example.demo.sentiment_analysis.enumeration.TypeOfAccess;
+import com.example.demo.sentiment_analysis.exception.PostsNotFoundException;
+import com.example.demo.sentiment_analysis.model.Posts;
 import com.example.demo.sentiment_analysis.model.Reaction;
 import com.example.demo.sentiment_analysis.model.Users;
 import com.example.demo.sentiment_analysis.repository.PostsRepo;
 import com.example.demo.sentiment_analysis.repository.ReactionRepo;
 import com.example.demo.sentiment_analysis.repository.UserRepo;
-
+import org.bson.types.ObjectId;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
 
 @Service
 public class ReactionService {
@@ -30,48 +31,72 @@ public class ReactionService {
         this.postsRepo = postsRepo;
     }
 
-    public Optional<Reaction> allReaction(String userEmail) {
+    public List<Reaction> getAllReactions(String userEmail) {
 
-        Users currentUser = userRepo.findByUserEmail(userEmail);
+        Users user = userRepo.findByUserEmail(userEmail);
 
-        if (currentUser == null) {
+        if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }
-        return reactionRepo.findByUserId(currentUser.getId());
+
+        // 1. Get all posts
+        List<Posts> allPosts = postsRepo.findAll();
+
+        // 2. Filter visible posts (public OR owned)
+        List<ObjectId> visiblePostIds = allPosts.stream()
+                .filter(post ->
+                        post.getType() == TypeOfAccess.PUBLIC
+                                || post.getUserId().equals(user.getId())
+                )
+                .map(Posts::getId)
+                .toList();
+
+        // 3. Fetch reactions only for visible posts
+        return reactionRepo.findByPostIdIn(visiblePostIds);
     }
 
-    public void createReaction(ReactionDto dto, String userEmail) {
-        Users byUserEmail = userRepo.findByUserEmail(userEmail);
-        userRepo.findById(byUserEmail.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public void createReaction(ReactionDto dto, String userEmail) throws AccessDeniedException {
 
-        postsRepo.findById(dto.getPostId())
-                .orElseThrow(() -> new RuntimeException("Post not found"));
-
-
-        Optional<Reaction> existing = reactionRepo
-                .findByUserIdAndPostId(byUserEmail.getId(), dto.getPostId());
-
-        if (existing.isEmpty() && dto.getUserId().equals(byUserEmail.getId())) {
-            Reaction reaction = new Reaction();
-            reaction.setUserId(dto.getUserId());
-            reaction.setPostId(dto.getPostId());
-            reaction.setReactionType(dto.getReactionType());
-            reaction.setCreatedAt(LocalDateTime.now());
-
-            reactionRepo.save(reaction);
-
-        } else {
-            Reaction old = existing.get();
-
-            if (old.getReactionType().equals(dto.getReactionType())) {
-                reactionRepo.delete(old);
-
-            } else {
-                old.setReactionType(dto.getReactionType());
-                reactionRepo.save(old);
-            }
+        Users user = userRepo.findByUserEmail(userEmail);
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found");
         }
+
+        Posts post = postsRepo.findById(dto.getPostId())
+                .orElseThrow(() -> new PostsNotFoundException("Post not found"));
+
+        // ACCESS RULE (your requirement)
+        boolean allowed =
+                post.getType() == TypeOfAccess.PUBLIC ||
+                        post.getUserId().equals(user.getId());
+
+        if (!allowed) {
+            throw new AccessDeniedException("Cannot react on private post");
+        }
+
+        Optional<Reaction> existing =
+                reactionRepo.findByUserIdAndPostId(user.getId(), post.getId());
+
+        if (existing.isPresent()) {
+            Reaction r = existing.get();
+
+            if (r.getReactionType().equals(dto.getReactionType())) {
+                reactionRepo.delete(r);
+                return;
+            }
+
+            r.setReactionType(dto.getReactionType());
+            r.setCreatedAt(LocalDateTime.now());
+            reactionRepo.save(r);
+            return;
+        }
+
+        Reaction reaction = new Reaction();
+        reaction.setUserId(user.getId());
+        reaction.setPostId(post.getId());
+        reaction.setReactionType(dto.getReactionType());
+        reaction.setCreatedAt(LocalDateTime.now());
+
+        reactionRepo.save(reaction);
     }
 }
-
