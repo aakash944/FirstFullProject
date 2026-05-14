@@ -2,8 +2,10 @@ package com.example.demo.sentiment_analysis.controller;
 
 import com.example.demo.sentiment_analysis.dto.CommentDto;
 import com.example.demo.sentiment_analysis.model.Comment;
+import com.example.demo.sentiment_analysis.pagination_slice.PaginatedResponse;
 import com.example.demo.sentiment_analysis.service.CommentService;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -24,11 +26,11 @@ public class CommentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Comment>> getAllCommentOfUser() {
+    public ResponseEntity<PaginatedResponse<Comment>> getAllCommentOfUser(Pageable pageable) {
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
         User principal = (User) authentication.getPrincipal();
-        List<Comment> comments = commentService.getCommentByEmail(principal.getUsername());
+        PaginatedResponse<Comment> comments = commentService.getCommentByEmail(principal.getUsername(),pageable);
         return new ResponseEntity<>(comments, HttpStatus.OK);
 
     }

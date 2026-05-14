@@ -2,6 +2,8 @@ package com.example.demo.sentiment_analysis.repository;
 
 import com.example.demo.sentiment_analysis.model.Reaction;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
@@ -17,6 +19,6 @@ public interface ReactionRepo extends MongoRepository<Reaction,ObjectId> {
 
     void deleteByPostId(ObjectId id);
 
-    List<Reaction> findByPostIdIn(List<ObjectId> visiblePostIds);
+    Slice<Reaction> findByPostIdIn(List<ObjectId> visiblePostIds, Pageable pageable);
 
 }

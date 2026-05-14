@@ -2,8 +2,10 @@ package com.example.demo.sentiment_analysis.controller;
 
 import com.example.demo.sentiment_analysis.dto.PostDto;
 import com.example.demo.sentiment_analysis.model.Posts;
+import com.example.demo.sentiment_analysis.pagination_slice.PaginatedResponse;
 import com.example.demo.sentiment_analysis.service.LogicOfPosts;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -12,7 +14,6 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -24,10 +25,10 @@ public class FrontControllerOfPosts {
     }
 
     @GetMapping
-    public ResponseEntity<List<Posts>> getMyPosts() {
+    public ResponseEntity<PaginatedResponse<Posts>> getMyPosts(Pageable pageable) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User principal = (org.springframework.security.core.userdetails.User) authentication.getPrincipal();
-        List<Posts> sentimentResult = logicOfSentiment.getPostsByUserEmail(principal.getUsername());
+        PaginatedResponse<Posts> sentimentResult = logicOfSentiment.getPostsByUserEmail(principal.getUsername(),pageable);
         return new ResponseEntity<>(sentimentResult, HttpStatus.OK);
     }
 

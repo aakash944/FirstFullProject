@@ -2,14 +2,16 @@ package com.example.demo.sentiment_analysis.controller;
 
 import com.example.demo.sentiment_analysis.dto.ReactionDto;
 import com.example.demo.sentiment_analysis.model.Reaction;
+import com.example.demo.sentiment_analysis.pagination_slice.PaginatedResponse;
 import com.example.demo.sentiment_analysis.service.ReactionService;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
-import java.util.List;
-
 
 
 @RestController
@@ -22,11 +24,15 @@ public class ReactionController {
     }
 
     @GetMapping
-    public List<Reaction> getAllReaction() {
+    public ResponseEntity<PaginatedResponse<Reaction>>getAllReaction(Pageable pageable) {
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
         org.springframework.security.core.userdetails.User principal =
                 (org.springframework.security.core.userdetails.User) authentication.getPrincipal();
-        return reactionService.getAllReactions(principal.getUsername());
+
+        PaginatedResponse<Reaction> allReactions = reactionService.getAllReactions(principal.getUsername(), pageable);
+        return new ResponseEntity<>(allReactions, HttpStatus.OK);
     }
 
 

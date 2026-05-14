@@ -5,13 +5,17 @@ import com.example.demo.sentiment_analysis.dto.UserDto;
 import com.example.demo.sentiment_analysis.exception.UserNotFoundException;
 import com.example.demo.sentiment_analysis.exception.WeakPasswordException;
 import com.example.demo.sentiment_analysis.model.Users;
+import com.example.demo.sentiment_analysis.pagination_slice.PaginatedResponse;
 import com.example.demo.sentiment_analysis.repository.CommentRepo;
 import com.example.demo.sentiment_analysis.repository.PostsRepo;
 import com.example.demo.sentiment_analysis.repository.ReactionRepo;
 import com.example.demo.sentiment_analysis.repository.UserRepo;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,8 +39,20 @@ public class UserService {
         this.reactionRepo = reactionRepo;
     }
 
-    public List<Users> getUserDb() {
-        return userRepo.findAll();
+    public PaginatedResponse<Users> getUserDb(Pageable pageable) {
+
+        Slice<Users> slice = userRepo.findAll(pageable);
+
+        PaginatedResponse<Users> response = new PaginatedResponse<>();
+
+        response.setContent(slice.getContent());
+        response.setPageNumber(slice.getNumber());
+        response.setPageSize(slice.getSize());
+        response.setFirst(slice.isFirst());
+        response.setLast(!slice.hasNext()); // Slice has no isLast()
+        response.setHasNext(slice.hasNext());
+
+        return response;
     }
 
     public Users newUserCreate(UserDto userInfo) {

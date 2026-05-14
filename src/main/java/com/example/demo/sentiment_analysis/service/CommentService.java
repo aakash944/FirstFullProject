@@ -7,10 +7,13 @@ import com.example.demo.sentiment_analysis.exception.PostsNotFoundException;
 import com.example.demo.sentiment_analysis.model.Comment;
 import com.example.demo.sentiment_analysis.model.Posts;
 import com.example.demo.sentiment_analysis.model.Users;
+import com.example.demo.sentiment_analysis.pagination_slice.PaginatedResponse;
 import com.example.demo.sentiment_analysis.repository.CommentRepo;
 import com.example.demo.sentiment_analysis.repository.PostsRepo;
 import com.example.demo.sentiment_analysis.repository.UserRepo;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +35,7 @@ public class CommentService {
         this.postsRepo = postsRepo;
     }
 
-    public List<Comment> getCommentByEmail(String userEmail) {
+    public PaginatedResponse<Comment> getCommentByEmail(String userEmail, Pageable pageable) {
 
         Users user = userRepo.findByUserEmail(userEmail);
 
@@ -44,7 +47,16 @@ public class CommentService {
                 .map(x -> x.getId())
                 .toList();
 
-        return commentRepo.findByPostIdIn(visiblePostIds);
+        Slice<Comment> slice = commentRepo.findByPostIdIn(visiblePostIds, pageable);
+        PaginatedResponse<Comment> response = new PaginatedResponse<>();
+        response.setContent(slice.getContent());
+        response.setPageNumber(slice.getNumber());
+        response.setPageSize(slice.getSize());
+        response.setFirst(slice.isFirst());
+        response.setLast(!slice.hasNext());
+        response.setHasNext(slice.hasNext());
+
+        return response;
     }
 
     public Comment newComment(CommentDto commentDto, String userEmail) throws AccessDeniedException {

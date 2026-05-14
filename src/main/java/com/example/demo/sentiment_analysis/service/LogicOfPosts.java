@@ -6,13 +6,18 @@ import com.example.demo.sentiment_analysis.exception.PostsNotFoundException;
 import com.example.demo.sentiment_analysis.exception.UserNotFoundException;
 import com.example.demo.sentiment_analysis.model.Posts;
 
+import com.example.demo.sentiment_analysis.model.Reaction;
 import com.example.demo.sentiment_analysis.model.Users;
+import com.example.demo.sentiment_analysis.pagination_slice.PaginatedResponse;
 import com.example.demo.sentiment_analysis.repository.CommentRepo;
 import com.example.demo.sentiment_analysis.repository.PostsRepo;
 
 import com.example.demo.sentiment_analysis.repository.ReactionRepo;
 import com.example.demo.sentiment_analysis.repository.UserRepo;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 
@@ -36,18 +41,29 @@ public class LogicOfPosts {
         this.reactionRepo = reactionRepo;
     }
 
-    public List<Posts> getPostsByUserEmail(String userEmail) {
+    public PaginatedResponse<Posts> getPostsByUserEmail(String userEmail, Pageable pageable) {
+
         Users currentUser = userRepo.findByUserEmail(userEmail);
 
-        List<Posts> allPosts = postsRepo.findAll();
-        return allPosts.stream()
-                .filter(post ->
+        if (currentUser == null) {
+            throw new UsernameNotFoundException("User not found");
+        }
 
-                        post.getType() == TypeOfAccess.PUBLIC
-                                || post.getUserId().equals(currentUser.getId())
+        Slice<Posts> slice = postsRepo.findByTypeOrUserId(
+                TypeOfAccess.PUBLIC,
+                currentUser.getId(),
+                pageable
+        );
+        PaginatedResponse<Posts> response = new PaginatedResponse<>();
+        response.setContent(slice.getContent());
+        response.setPageNumber(slice.getNumber());
+        response.setPageSize(slice.getSize());
+        response.setFirst(slice.isFirst());
+        response.setLast(!slice.hasNext());
+        response.setHasNext(slice.hasNext());
 
-                )
-                .toList();
+        return response;
+
     }
 
     public Posts createPostForUser(PostDto postDto, String currentUserEmail) {

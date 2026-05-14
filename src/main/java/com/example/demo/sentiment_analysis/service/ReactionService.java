@@ -6,10 +6,13 @@ import com.example.demo.sentiment_analysis.exception.PostsNotFoundException;
 import com.example.demo.sentiment_analysis.model.Posts;
 import com.example.demo.sentiment_analysis.model.Reaction;
 import com.example.demo.sentiment_analysis.model.Users;
+import com.example.demo.sentiment_analysis.pagination_slice.PaginatedResponse;
 import com.example.demo.sentiment_analysis.repository.PostsRepo;
 import com.example.demo.sentiment_analysis.repository.ReactionRepo;
 import com.example.demo.sentiment_analysis.repository.UserRepo;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -31,7 +34,7 @@ public class ReactionService {
         this.postsRepo = postsRepo;
     }
 
-    public List<Reaction> getAllReactions(String userEmail) {
+    public PaginatedResponse<Reaction> getAllReactions(String userEmail, Pageable pageable) {
 
         Users user = userRepo.findByUserEmail(userEmail);
 
@@ -39,10 +42,8 @@ public class ReactionService {
             throw new UsernameNotFoundException("User not found");
         }
 
-        // 1. Get all posts
         List<Posts> allPosts = postsRepo.findAll();
 
-        // 2. Filter visible posts (public OR owned)
         List<ObjectId> visiblePostIds = allPosts.stream()
                 .filter(post ->
                         post.getType() == TypeOfAccess.PUBLIC
@@ -51,8 +52,17 @@ public class ReactionService {
                 .map(Posts::getId)
                 .toList();
 
-        // 3. Fetch reactions only for visible posts
-        return reactionRepo.findByPostIdIn(visiblePostIds);
+        Slice<Reaction> slice = reactionRepo.findByPostIdIn(visiblePostIds, pageable);
+
+        PaginatedResponse<Reaction> response = new PaginatedResponse<>();
+        response.setContent(slice.getContent());
+        response.setPageNumber(slice.getNumber());
+        response.setPageSize(slice.getSize());
+        response.setFirst(slice.isFirst());
+        response.setLast(!slice.hasNext());
+        response.setHasNext(slice.hasNext());
+
+        return response;
     }
 
     public void createReaction(ReactionDto dto, String userEmail) throws AccessDeniedException {
